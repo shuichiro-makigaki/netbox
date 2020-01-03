@@ -11,6 +11,7 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Count, F, ProtectedError, Q, Sum
+from django.db.models.functions import Length
 from django.urls import reverse
 from django.utils.http import urlencode
 from mptt.models import MPTTModel, TreeForeignKey
@@ -19,7 +20,6 @@ from timezone_field import TimeZoneField
 
 from extras.models import ConfigContextModel, CustomFieldModel, ObjectChange, TaggedItem
 from utilities.fields import ColorField
-from utilities.managers import NaturalOrderingManager
 from utilities.models import ChangeLoggedModel
 from utilities.utils import foreground_color, serialize_object, to_meters
 
@@ -329,7 +329,6 @@ class Site(ChangeLoggedModel, CustomFieldModel):
         to='extras.ImageAttachment'
     )
 
-    objects = NaturalOrderingManager()
     tags = TaggableManager(through=TaggedItem)
 
     csv_headers = [
@@ -348,7 +347,7 @@ class Site(ChangeLoggedModel, CustomFieldModel):
     }
 
     class Meta:
-        ordering = ['name']
+        ordering = (Length('name'), 'name')
 
     def __str__(self):
         return self.name
@@ -686,7 +685,6 @@ class Rack(ChangeLoggedModel, CustomFieldModel, RackElevationHelperMixin):
         to='extras.ImageAttachment'
     )
 
-    objects = NaturalOrderingManager()
     tags = TaggableManager(through=TaggedItem)
 
     csv_headers = [
@@ -707,11 +705,11 @@ class Rack(ChangeLoggedModel, CustomFieldModel, RackElevationHelperMixin):
     }
 
     class Meta:
-        ordering = ['site', 'group', 'name']
-        unique_together = [
-            ['group', 'name'],
-            ['group', 'facility_id'],
-        ]
+        ordering = ('site', 'group', Length('name'), 'name')
+        unique_together = (
+            ('group', 'name'),
+            ('group', 'facility_id'),
+        )
 
     def __str__(self):
         return self.display_name or super().__str__()
@@ -1188,11 +1186,9 @@ class ConsolePortTemplate(ComponentTemplateModel):
         blank=True
     )
 
-    objects = NaturalOrderingManager()
-
     class Meta:
-        ordering = ['device_type', 'name']
-        unique_together = ['device_type', 'name']
+        ordering = ('device_type', Length('name'), 'name')
+        unique_together = ('device_type', 'name')
 
     def __str__(self):
         return self.name
@@ -1223,11 +1219,9 @@ class ConsoleServerPortTemplate(ComponentTemplateModel):
         blank=True
     )
 
-    objects = NaturalOrderingManager()
-
     class Meta:
-        ordering = ['device_type', 'name']
-        unique_together = ['device_type', 'name']
+        ordering = ('device_type', Length('name'), 'name')
+        unique_together = ('device_type', 'name')
 
     def __str__(self):
         return self.name
@@ -1270,11 +1264,9 @@ class PowerPortTemplate(ComponentTemplateModel):
         help_text="Allocated power draw (watts)"
     )
 
-    objects = NaturalOrderingManager()
-
     class Meta:
-        ordering = ['device_type', 'name']
-        unique_together = ['device_type', 'name']
+        ordering = ('device_type', Length('name'), 'name')
+        unique_together = ('device_type', 'name')
 
     def __str__(self):
         return self.name
@@ -1319,11 +1311,9 @@ class PowerOutletTemplate(ComponentTemplateModel):
         help_text="Phase (for three-phase feeds)"
     )
 
-    objects = NaturalOrderingManager()
-
     class Meta:
-        ordering = ['device_type', 'name']
-        unique_together = ['device_type', 'name']
+        ordering = ('device_type', Length('name'), 'name')
+        unique_together = ('device_type', 'name')
 
     def __str__(self):
         return self.name
@@ -1414,14 +1404,12 @@ class FrontPortTemplate(ComponentTemplateModel):
         validators=[MinValueValidator(1), MaxValueValidator(64)]
     )
 
-    objects = NaturalOrderingManager()
-
     class Meta:
-        ordering = ['device_type', 'name']
-        unique_together = [
-            ['device_type', 'name'],
-            ['rear_port', 'rear_port_position'],
-        ]
+        ordering = ('device_type', Length('name'), 'name')
+        unique_together = (
+            ('device_type', 'name'),
+            ('rear_port', 'rear_port_position'),
+        )
 
     def __str__(self):
         return self.name
@@ -1477,11 +1465,9 @@ class RearPortTemplate(ComponentTemplateModel):
         validators=[MinValueValidator(1), MaxValueValidator(64)]
     )
 
-    objects = NaturalOrderingManager()
-
     class Meta:
-        ordering = ['device_type', 'name']
-        unique_together = ['device_type', 'name']
+        ordering = ('device_type', Length('name'), 'name')
+        unique_together = ('device_type', 'name')
 
     def __str__(self):
         return self.name
@@ -1508,11 +1494,9 @@ class DeviceBayTemplate(ComponentTemplateModel):
         max_length=50
     )
 
-    objects = NaturalOrderingManager()
-
     class Meta:
-        ordering = ['device_type', 'name']
-        unique_together = ['device_type', 'name']
+        ordering = ('device_type', Length('name'), 'name')
+        unique_together = ('device_type', 'name')
 
     def __str__(self):
         return self.name
@@ -1762,7 +1746,6 @@ class Device(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
         to='extras.ImageAttachment'
     )
 
-    objects = NaturalOrderingManager()
     tags = TaggableManager(through=TaggedItem)
 
     csv_headers = [
@@ -1784,12 +1767,12 @@ class Device(ChangeLoggedModel, ConfigContextModel, CustomFieldModel):
     }
 
     class Meta:
-        ordering = ['name']
-        unique_together = [
-            ['site', 'tenant', 'name'],  # See validate_unique below
-            ['rack', 'position', 'face'],
-            ['virtual_chassis', 'vc_position'],
-        ]
+        ordering = (Length('name'), 'name')
+        unique_together = ([
+            ('site', 'tenant', 'name'),  # See validate_unique below
+            ('rack', 'position', 'face'),
+            ('virtual_chassis', 'vc_position'),
+        ])
         permissions = (
             ('napalm_read', 'Read-only access to devices via NAPALM'),
             ('napalm_write', 'Read/write access to devices via NAPALM'),
@@ -2085,14 +2068,13 @@ class ConsolePort(CableTermination, ComponentModel):
         blank=True
     )
 
-    objects = NaturalOrderingManager()
     tags = TaggableManager(through=TaggedItem)
 
     csv_headers = ['device', 'name', 'type', 'description']
 
     class Meta:
-        ordering = ['device', 'name']
-        unique_together = ['device', 'name']
+        ordering = ('device', Length('name'), 'name')
+        unique_together = ('device', 'name')
 
     def __str__(self):
         return self.name
@@ -2135,13 +2117,13 @@ class ConsoleServerPort(CableTermination, ComponentModel):
         blank=True
     )
 
-    objects = NaturalOrderingManager()
     tags = TaggableManager(through=TaggedItem)
 
     csv_headers = ['device', 'name', 'type', 'description']
 
     class Meta:
-        unique_together = ['device', 'name']
+        ordering = ('device', Length('name'), 'name')
+        unique_together = ('device', 'name')
 
     def __str__(self):
         return self.name
@@ -2210,14 +2192,13 @@ class PowerPort(CableTermination, ComponentModel):
         blank=True
     )
 
-    objects = NaturalOrderingManager()
     tags = TaggableManager(through=TaggedItem)
 
     csv_headers = ['device', 'name', 'type', 'maximum_draw', 'allocated_draw', 'description']
 
     class Meta:
-        ordering = ['device', 'name']
-        unique_together = ['device', 'name']
+        ordering = ('device', Length('name'), 'name')
+        unique_together = ('device', 'name')
 
     def __str__(self):
         return self.name
@@ -2340,13 +2321,13 @@ class PowerOutlet(CableTermination, ComponentModel):
         blank=True
     )
 
-    objects = NaturalOrderingManager()
     tags = TaggableManager(through=TaggedItem)
 
     csv_headers = ['device', 'name', 'type', 'power_port', 'feed_leg', 'description']
 
     class Meta:
-        unique_together = ['device', 'name']
+        ordering = ('device', Length('name'), 'name')
+        unique_together = ('device', 'name')
 
     def __str__(self):
         return self.name
@@ -2661,17 +2642,16 @@ class FrontPort(CableTermination, ComponentModel):
 
     is_path_endpoint = False
 
-    objects = NaturalOrderingManager()
     tags = TaggableManager(through=TaggedItem)
 
     csv_headers = ['device', 'name', 'type', 'rear_port', 'rear_port_position', 'description']
 
     class Meta:
-        ordering = ['device', 'name']
-        unique_together = [
-            ['device', 'name'],
-            ['rear_port', 'rear_port_position'],
-        ]
+        ordering = ('device', Length('name'), 'name')
+        unique_together = (
+            ('device', 'name'),
+            ('rear_port', 'rear_port_position'),
+        )
 
     def __str__(self):
         return self.name
@@ -2726,14 +2706,13 @@ class RearPort(CableTermination, ComponentModel):
 
     is_path_endpoint = False
 
-    objects = NaturalOrderingManager()
     tags = TaggableManager(through=TaggedItem)
 
     csv_headers = ['device', 'name', 'type', 'positions', 'description']
 
     class Meta:
-        ordering = ['device', 'name']
-        unique_together = ['device', 'name']
+        ordering = ('device', Length('name'), 'name')
+        unique_together = ('device', 'name')
 
     def __str__(self):
         return self.name
@@ -2773,14 +2752,13 @@ class DeviceBay(ComponentModel):
         null=True
     )
 
-    objects = NaturalOrderingManager()
     tags = TaggableManager(through=TaggedItem)
 
     csv_headers = ['device', 'name', 'installed_device', 'description']
 
     class Meta:
-        ordering = ['device', 'name']
-        unique_together = ['device', 'name']
+        ordering = ('device', Length('name'), 'name')
+        unique_together = ('device', 'name')
 
     def __str__(self):
         return '{} - {}'.format(self.device.name, self.name)
